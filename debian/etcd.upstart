@@ -18,8 +18,10 @@ script
 		. /etc/default/$UPSTART_JOB
 	fi
 	[ -z "${ETCD_ADDR}" ] && ETCD_ADDR="`ec2metadata --local-ipv4`:4001"
+	[ -z "${ETCD_PEER_ADDR}" ] && ETCD_PEER_ADDR="`ec2metadata --local-ipv4`:7001"
 
 	export ETCD_ADDR
+	export ETCD_PEER_ADDR
 	export ETCD_DATA_DIR
 	export ETCD_NAME
 
