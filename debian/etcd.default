@@ -6,14 +6,16 @@
 # This is a POSIX shell fragment
 #
 
+# Used for advertizing our address:port (i.e. host ip : 7001) within the cluster.
 #ETCD_ADDR=
+
 #ETCD_BIND_ADDR=
 #ETCD_CA_FILE=
 #ETCD_CERT_FILE=
 
 #ETCD_CORS=
 ETCD_DATA_DIR=/var/lib/etcd
-ETCD_DISCOVERY=https://discovery.etcd.io/db55c2357d2142890e3d1078ae697939
+ETCD_DISCOVERY=https://discovery.etcd.io/f761e815dcdf9f7f8e85c84fd5efdd45
 
 #ETCD_KEY_FILE=
 #ETCD_PEERS=

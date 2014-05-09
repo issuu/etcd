@@ -17,7 +17,9 @@ script
 		echo sourcing defaults
 		. /etc/default/$UPSTART_JOB
 	fi
+	[ -z "${ETCD_ADDR}" ] && ETCD_ADDR="`ec2metadata --local-ipv4`:7001"
 
+	export ETCD_ADDR
 	export ETCD_DATA_DIR
 	export ETCD_NAME
 
