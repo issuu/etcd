@@ -13,5 +13,5 @@ override_dh_auto_clean:
 
 override_dh_auto_build:
 	./build
-	[ -d etcdctl ] && ( cd etcdctl ; ./build ; cp bin/etcdctl ../bin/)
+	[ -d ../etcdctl ] && ( cd ../etcdctl ; ./build ; cp bin/etcdctl ../etcd/bin/)
 
