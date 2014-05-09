@@ -1,0 +1,28 @@
+description "Etcd daemon"
+
+start on filesystem
+stop on runlevel [!2345]
+
+respawn
+
+script
+	# modify these in /etc/default/$UPSTART_JOB (/etc/default/etcd)
+	ETCD=/usr/bin/$UPSTART_JOB
+
+	ETCD_OPTS=
+	ETCD_DATA_DIR=/var/lib/etcd
+	ETCD_NAME="`hostname`"
+
+	if [ -f /etc/default/$UPSTART_JOB ]; then
+		echo sourcing defaults
+		. /etc/default/$UPSTART_JOB
+	fi
+
+	export ETCD_DATA_DIR
+	export ETCD_NAME
+
+	[ -n "${ETCD_GRAPHITE_HOST}" ] && export ETCD_GRAPHITE_HOST
+	[ -n "${ETCD_DISCOVERY}"     ] && export ETCD_DISCOVERY
+
+	${ETCD} ${ETCD_OPTS}
+end script

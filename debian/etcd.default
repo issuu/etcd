@@ -1,0 +1,33 @@
+# Defaults for etcd initscript
+# sourced by /etc/init.d/etcd
+# installed at /etc/default/etcd by the maintainer scripts
+
+#
+# This is a POSIX shell fragment
+#
+
+#ETCD_ADDR=
+#ETCD_BIND_ADDR=
+#ETCD_CA_FILE=
+#ETCD_CERT_FILE=
+
+#ETCD_CORS=
+ETCD_DATA_DIR=/var/lib/etcd
+ETCD_DISCOVERY=https://discovery.etcd.io/797724f30f1a606a9f89e4da11577d23
+
+#ETCD_KEY_FILE=
+#ETCD_PEERS=
+#ETCD_PEERS_FILE=
+#ETCD_MAX_RESULT_BUFFER=
+#ETCD_MAX_RETRY_ATTEMPTS=
+#ETCD_RETRY_INTERVAL=
+#ETCD_NAME=
+#ETCD_SNAPSHOT=
+#ETCD_SNAPSHOTCOUNT=
+
+#ETCD_VERBOSE=
+#ETCD_VERY_VERBOSE=
+#ETCD_VERY_VERY_VERBOSE=
+#ETCD_TRACE=
+
+ETCD_GRAPHITE_HOST=graph.issuu.com

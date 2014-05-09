@@ -1,0 +1,17 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Uncomment this to turn on verbose mode.
+export DH_VERBOSE=1
+
+%:
+	#dh $@ --with issuu
+	dh $@ --with=golang,systemd
+
+override_dh_auto_clean:
+	rm -rf bin || :
+
+override_dh_auto_build:
+	./build
+	[ -d etcdctl ] && ( cd etcdctl ; ./build ; cp bin/etcdctl ../bin/)
+
