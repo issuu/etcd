@@ -5,9 +5,8 @@
 export DH_VERBOSE=1
 
 %:
-	#dh $@ --with issuu
-	#dh $@ --with golang,systemd
-	dh $@
+	#dh $@ --with issuu,golang,systemd
+	dh $@ --with issuu
 
 override_dh_auto_clean:
 	rm -rf bin || :
