@@ -15,7 +15,7 @@
 
 #ETCD_CORS=
 ETCD_DATA_DIR=/var/lib/etcd
-ETCD_DISCOVERY=https://discovery.etcd.io/f761e815dcdf9f7f8e85c84fd5efdd45
+ETCD_DISCOVERY=https://discovery.etcd.io/f6afd77e95d167d898a02be61e7408b9
 
 #ETCD_KEY_FILE=
 #ETCD_PEERS=
