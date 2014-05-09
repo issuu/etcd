@@ -6,7 +6,7 @@
 # This is a POSIX shell fragment
 #
 
-# Used for advertizing our address:port (i.e. host ip : 7001) within the cluster.
+# Used for advertizing our address:port (i.e. host ip : 4001) within the cluster.
 #ETCD_ADDR=
 
 #ETCD_BIND_ADDR=
