@@ -1,0 +1,21 @@
+Source: etcd
+Section: admin
+Priority: optional
+Maintainer: Simon Ellefsen <se@issuu.com>
+Build-Depends: debhelper (>= 8.0.0)
+Standards-Version: 3.9.4
+Homepage: https://github.com/coreos/etcd
+
+Package: etcd
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: A highly-available key value store for shared configuration and service discovery.
+ A highly-available key value store for shared configuration and service discovery. etcd is inspired by Apache ZooKeeper and doozer, with a focus on being:
+ .
+ Simple: curl'able user facing API (HTTP+JSON)
+ Secure: optional SSL client cert authentication
+ Fast: benchmarked 1000s of writes/s per instance
+ Reliable: properly distributed using Raft
+ etcd is written in Go and uses the Raft consensus algorithm to manage a highly-available replicated log.
+ .
+ See etcdctl for a simple command line client. Or feel free to just use curl, as in the examples below.

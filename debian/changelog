@@ -1,0 +1,5 @@
+etcd (0.3.0-14050901) unstable; urgency=low
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- Simon Ellefsen <se@issuu.com>  Thu, 08 May 2014 09:47:10 +0000
