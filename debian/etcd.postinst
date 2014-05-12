@@ -1,5 +1,5 @@
 #!/bin/sh
-# postinst script for frontend
+# postinst script for etcd
 #
 # see: dh_installdeb(1)
 
@@ -18,6 +18,9 @@ case "$1" in
                     --home /dev/null \
                     --shell /sbin/nologin \
                     ${ETCD_USER} || :
+
+        [ ! -d /var/lib/etcd ] && mkdir /var/lib/etcd
+        chown -R ${ETCD_USER}:${ETCD_USER} /var/lib/etcd
 
     ;;
 
