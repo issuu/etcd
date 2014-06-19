@@ -21,7 +21,7 @@ The key space consists of directories and keys which are generically referred to
 
 ### Setting the value of a key
 
-Let’s set the first key-value pair in the datastore.
+Let's set the first key-value pair in the datastore.
 In this case the key is `/message` and the value is `Hello world`.
 
 ```sh
@@ -58,7 +58,7 @@ You may notice that in this example the index is `2` even though it is the first
 This is because there are internal commands that also change the state behind the scenes, like adding and syncing servers.
 
 5. `node.modifiedIndex`: like `node.createdIndex`, this attribute is also an etcd index.
-Actions that cause the value to change include `set`, `delete`, `update`, `create` and `compareAndSwap`.
+Actions that cause the value to change include `set`, `delete`, `update`, `create`, `compareAndSwap` and `compareAndDelete`.
 Since the `get` and `watch` commands do not change state in the store, they do not change the value of `node.modifiedIndex`.
 
 
@@ -118,11 +118,10 @@ curl -L http://127.0.0.1:4001/v2/keys/message -XPUT -d value="Hello etcd"
         "value": "Hello etcd"
     },
     "prevNode": {
-    	"createdIndex":2
+    	"createdIndex": 2
     	"key": "/message",
     	"value": "Hello world",
     	"modifiedIndex": 2,
-    
     }
 }
 ```
@@ -200,6 +199,32 @@ If the TTL has expired, the key will have been deleted, and you will be returned
     "errorCode": 100,
     "index": 6,
     "message": "Key Not Found"
+}
+```
+
+The TTL could be unset to avoid expiration through update operation:
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=bar -d ttl= -d prevExist=true
+```
+
+```json
+{
+    "action": "update",
+    "node": {
+        "createdIndex": 5,
+        "key": "/foo",
+        "modifiedIndex": 6,
+        "value": "bar"
+    }
+    "prevNode": {
+        "createdIndex": 5,
+        "expiration": "2013-12-04T12:01:21.874888581-08:00",
+        "key": "/foo",
+        "modifiedIndex": 5,
+        "ttl": 3,
+        "value": "bar"
+    }
 }
 ```
 
@@ -379,11 +404,11 @@ curl 'http://127.0.0.1:4001/v2/keys/dir/asdf?consistent=true&wait=true'
 		"modifiedIndex": 15
 	},
 	"prevNode": {
-		"createdIndex":8,
+		"createdIndex": 8,
 		"key": "/dir",
 		"dir":true,
 		"modifiedIndex": 17,
-		"expiration":"2013-12-11T10:39:35.689275857-08:00"
+		"expiration": "2013-12-11T10:39:35.689275857-08:00"
 	},
 }
 ```
@@ -399,7 +424,7 @@ The current comparable conditions are:
 
 1. `prevValue` - checks the previous value of the key.
 
-2. `prevIndex` - checks the previous index of the key.
+2. `prevIndex` - checks the previous modifiedIndex of the key.
 
 3. `prevExist` - checks existence of the key: if `prevExist` is true, it is an `update` request; if prevExist is `false`, it is a `create` request.
 
@@ -438,14 +463,15 @@ This will try to compare the previous value of the key and the previous value we
 
 ```json
 {
-    "cause": "[two != one] [0 != 8]",
+    "cause": "[two != one]",
     "errorCode": 101,
     "index": 8,
     "message": "Test Failed"
 }
 ```
 
-which means `CompareAndSwap` failed.
+which means `CompareAndSwap` failed. `cause` explains why the test failed.
+Note: the condition prevIndex=0 always passes.
 
 Let's try a valid condition:
 
@@ -465,7 +491,7 @@ The response should be:
         "value": "two"
     },
     "prevNode": {
-    	"createdIndex":8,
+    	"createdIndex": 8,
     	"key": "/foo",
     	"modifiedIndex": 8,
     	"value": "one"
@@ -475,6 +501,79 @@ The response should be:
 
 We successfully changed the value from "one" to "two" since we gave the correct previous value.
 
+### Atomic Compare-and-Delete
+
+This command will delete a key only if the client-provided conditions are equal to the current conditions.
+
+The current comparable conditions are:
+
+1. `prevValue` - checks the previous value of the key.
+
+2. `prevIndex` - checks the previous modifiedIndex of the key.
+
+Here is a simple example. Let's first create a key: `foo=one`.
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/foo -XPUT -d value=one
+```
+
+Now let's try some `CompareAndDelete` commands.
+
+Trying to delete the key with `prevValue=two` fails as expected:
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/foo?prevValue=two -XDELETE
+```
+
+The error code explains the problem:
+
+```json
+{
+	"errorCode": 101,
+	"message": "Compare failed",
+	"cause": "[two != one]",
+	"index": 8
+}
+```
+
+As does a `CompareAndDelete` with a mismatched `prevIndex`:
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/foo?prevIndex=1 -XDELETE
+```
+
+```json
+{
+	"errorCode": 101,
+	"message": "Compare failed",
+	"cause": "[1 != 8]",
+	"index": 8
+}
+```
+
+And now a valid `prevValue` condition:
+
+```sh
+curl -L http://127.0.0.1:4001/v2/keys/foo?prevValue=one -XDELETE
+```
+
+The successful response will look something like:
+
+```json
+{
+	"action": "compareAndDelete",
+	"node": {
+		"key": "/foo",
+		"modifiedIndex": 9,
+		"createdIndex": 8
+	},
+	"prevNode": {
+		"key": "/foo",
+		"value": "one",
+		"modifiedIndex": 8,
+		"createdIndex": 8
+	}
+}
+```
 
 ### Creating Directories
 
@@ -710,12 +809,47 @@ curl -L http://127.0.0.1:4001/v2/keys/
 
 Here we see the `/message` key but our hidden `/_message` key is not returned.
 
+### Setting a key from a file
 
-## Lock Module
+You can also use etcd to store small configuration files, json documents, XML documents, etc directly.
+For example you can use curl to upload a simple text file and encode it:
+
+```
+echo "Hello\nWorld" > afile.txt
+curl -L http://127.0.0.1:4001/v2/keys/afile -XPUT --data-urlencode value@afile.txt
+```
+
+```json
+{
+    "action": "get",
+    "node": {
+        "createdIndex": 2,
+        "key": "/afile",
+        "modifiedIndex": 2,
+        "value": "Hello\nWorld\n"
+    }
+}
+```
+
+### Read Consistency
+
+Followers in a cluster can be behind the leader in their copy of the keyspace.
+If your application wants or needs the most up-to-date version of a key then it should ensure it reads from the current leader.
+By using the `consistent=true` flag in your GET requests, etcd will make sure you are talking to the current master.
+
+As an example of how a machine can be behind the leader let's start with a three machine cluster: L, F1, and F2.
+A client makes a write to L and F1 acknowledges the request.
+The client is told the write was successful and the keyspace is updated.
+Meanwhile F2 has partitioned from the network and will have an out-of-date version of the keyspace until the partition resolves.
+Since F2 missed the most recent write, a client reading from F2 will have an out-of-date version of the keyspace.
+
+## Lock Module (*Deprecated*)
 
 The lock module is used to serialize access to resources used by clients.
 Multiple clients can attempt to acquire a lock but only one can have it at a time.
 Once the lock is released, the next client waiting for the lock will receive it.
+
+**Warning:** This module is deprecated at v0.4. See [Modules][modules] for more details.
 
 
 ### Acquiring a Lock
@@ -797,7 +931,7 @@ If the TTL is not specified or is not a number then you'll receive the following
 When the client is finished with the lock, simply send a `DELETE` request to release the lock:
 
 ```sh
-curl -L http://127.0.0.1:4001/mod/v2/lock/mylock -XDELETE -d index=5
+curl -L http://127.0.0.1:4001/mod/v2/lock/mylock?index=5 -XDELETE
 ```
 
 If the index or value is not specified then you'll receive the following error:
@@ -847,7 +981,7 @@ Will return the current index:
 2
 ```
 
-If you specify a field other than `field` or `value` then you'll receive the following error:
+If you specify a field other than `index` or `value` then you'll receive the following error:
 
 ```json
 {
@@ -858,9 +992,12 @@ If you specify a field other than `field` or `value` then you'll receive the fol
 ```
 
 
-## Leader Module
+## Leader Module (*Deprecated*)
 
 The leader module wraps the lock module to provide a simple interface for electing a single leader in a cluster.
+
+**Warning:** This module is deprecated at v0.4. See [Modules][modules] for more details.
+[modules]: https://github.com/coreos/etcd/blob/master/Documentation/modules.md
 
 
 ### Setting the Leader
@@ -981,9 +1118,9 @@ Each node keeps a number of internal statistics:
 - `recvBandwidthRate`: number of bytes per second this node is receiving (follower only)
 - `recvPkgRate`: number of requests per second this node is receiving (follower only)
 - `sendAppendRequestCnt`: number of requests that this node has sent
-- `sendBandwidthRate`: number of bytes per second this node is receiving (leader only)
-- `sendPkgRate`: number of requests per second this node is receiving (leader only)
-- `state`: either leader or folower
+- `sendBandwidthRate`: number of bytes per second this node is receiving (leader only). This value is undefined on single machine clusters.
+- `sendPkgRate`: number of requests per second this node is receiving (leader only). This value is undefined on single machine clusters.
+- `state`: either leader or follower
 - `startTime`: the time when this node was started
 
 This is an example response from a follower machine:
@@ -1014,7 +1151,7 @@ And this is an example response from a leader machine:
 curl -L http://127.0.0.1:4001/v2/stats/self
 ```
 
-```
+```json
 {
     "leaderInfo": {
         "leader": "machine0",
@@ -1059,4 +1196,96 @@ curl -L http://127.0.0.1:4001/v2/stats/store
     "updateSuccess": 0,
     "watchers": 0
 }
+```
+
+## Cluster Config
+
+The configuration endpoint manages shared cluster wide properties.
+
+### Set Cluster Config
+
+```sh
+curl -L http://127.0.0.1:7001/v2/admin/config -XPUT -d '{"activeSize":3, "removeDelay":1800,"syncInterval":5}'
+```
+
+```json
+{
+    "activeSize": 3,
+    "removeDelay": 1800,
+    "syncInterval":5
+}
+```
+
+`activeSize` is the maximum number of peers that can join the cluster and participate in the consensus protocol.
+
+The size of cluster is controlled to be around a certain number. If it is not, standby-mode instances will join or peer-mode instances will be removed to make it happen.
+
+`removeDelay` indicates the minimum time that a machine has been observed to be unresponsive before it is removed from the cluster.
+
+### Get Cluster Config
+
+```sh
+curl -L http://127.0.0.1:7001/v2/admin/config
+```
+
+```json
+{
+    "activeSize": 3,
+    "removeDelay": 1800,
+    "syncInterval":5
+}
+```
+
+## Remove Machines
+
+At times you may want to manually remove a machine. Using the machines endpoint
+you can find and remove machines.
+
+First, list all the machines in the cluster.
+
+```sh
+curl -L http://127.0.0.1:7001/v2/admin/machines
+```
+```json
+[
+    {
+        "clientURL": "http://127.0.0.1:4001",
+        "name": "peer1",
+        "peerURL": "http://127.0.0.1:7001",
+        "state": "leader"
+    },
+    {
+        "clientURL": "http://127.0.0.1:4002",
+        "name": "peer2",
+        "peerURL": "http://127.0.0.1:7002",
+        "state": "follower"
+    },
+    {
+        "clientURL": "http://127.0.0.1:4003",
+        "name": "peer3",
+        "peerURL": "http://127.0.0.1:7003",
+        "state": "follower"
+    }
+]
+```
+
+Then take a closer look at the machine you want to remove.
+
+```sh
+curl -L http://127.0.0.1:7001/v2/admin/machines/peer2
+```
+
+```json
+{
+    "clientURL": "http://127.0.0.1:4002",
+    "name": "peer2",
+    "peerURL": "http://127.0.0.1:7002",
+    "state": "follower"
+}
+```
+
+And finally remove it.
+
+```sh
+curl -L -XDELETE http://127.0.0.1:7001/v2/admin/machines/peer2
 ```
